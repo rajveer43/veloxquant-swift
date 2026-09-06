@@ -25,10 +25,14 @@ jobs:
     container: swift:5.9
     steps:
       - uses: actions/checkout@v4
-      - name: Build VeloxQuantCore
-        run: swift build --target VeloxQuantCore
-      - name: Test VeloxQuantCoreTests
-        run: swift test --filter VeloxQuantCoreTests
+      # Package.swift excludes VeloxQuantRuntime and VeloxQuantRuntimeTests from the manifest
+      # entirely on non-macOS hosts, so a plain `swift build`/`swift test` here only ever sees
+      # VeloxQuantCore — `--filter` alone is not enough, since `swift test` builds every
+      # declared target before running the requested subset.
+      - name: Build
+        run: swift build
+      - name: Test
+        run: swift test
 
   swiftlint:
     name: SwiftLint

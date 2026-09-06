@@ -43,8 +43,8 @@ explicit `#error` rather than a confusing missing-symbol error.
 
 | Target | Platforms | Purpose | Status |
 |---|---|---|---|
-| `VeloxQuantCore` | iOS 16+, macOS 13+, watchOS 9+, tvOS 16+, visionOS 1+ | Chat/streaming HTTP client, full error model, memory estimation, conversations, structured output, embeddings, monitoring | Bootstrap in progress (Phase 0). |
-| `VeloxQuantRuntime` | macOS 13+ only | Python interpreter resolution, CLI shell-outs, AutoPilot, `serve` process lifecycle, method/model listing | Bootstrap in progress (Phase 0). |
+| `VeloxQuantCore` | iOS 16+, macOS 13+, watchOS 9+, tvOS 16+, visionOS 1+ | Chat/streaming HTTP client, full error model, memory estimation, conversations, structured output, embeddings, monitoring | `chat()`/`chatStream()`, the full `VeloxQuantError` hierarchy, and 404-dispatch logic shipped (Phase 1). Memory estimation, conversations, structured output/embeddings, monitoring pending. |
+| `VeloxQuantRuntime` | macOS 13+ only | Python interpreter resolution, CLI shell-outs, AutoPilot, `serve` process lifecycle, method/model listing | `HardwareDetector.detect()` shipped (Phase 0). Interpreter resolution, CLI shell-outs, AutoPilot, process lifecycle pending. |
 
 ## Requirements
 

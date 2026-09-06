@@ -26,6 +26,24 @@ prompt's "final note on flagged judgment calls").
   builds and links for the iOS Simulator with zero `VeloxQuantRuntime` symbols
   reachable.
 
+- Phase 1: `VeloxQuantCore`'s `VeloxQuantClient` (plain `init`, `baseURL` defaulting to
+  `http://127.0.0.1:8000`), `chat()`/`chatStream()`, the full request/response wire
+  model (`ChatRequest` with every field from investigation §1.3, `Message`
+  enum-with-payload, `ChatResponse`, `ChatChunk`, `Usage`, `ToolCall`/`ToolDefinition`,
+  `ResponseFormat`, `JSONValue` ported verbatim from Studio's
+  `QuantizationMethod.swift`), and the complete 11-case `VeloxQuantError` hierarchy
+  (`Error`, `LocalizedError`, `Sendable`) with the full 404-dispatch logic
+  (`generationFailed`/`unexpectedRoute`/`malformedErrorResponse`/`serverError`,
+  inspecting response bodies rather than dispatching on status code alone).
+  `chatStream()` hand-rolls SSE parsing over `URLSession`'s byte stream: skips
+  `:`-prefixed keepalive comments and blank lines, handles the usage-only final frame
+  (empty `choices: []`, populated `usage`), stops on `[DONE]`. 15 `URLProtocol`-mocked
+  unit tests cover every error-dispatch branch and streaming shape from investigation
+  §1.4/§1.5, plus an exhaustiveness test proving `VeloxQuantError`'s `switch` compiles
+  with no `default:` branch. `Recommendation` (referenced but never field-sketched in
+  the plan's §4) was sourced directly from VeloxQuant-Studio's real
+  `BenchmarkService.swift` `RecommendResponse.Recommendation` type rather than guessed.
+
 ### Changed
 - **Deviated from plan §3.2's `HardwareInfo`/`AppleSiliconChip` sketch, following
   VeloxQuant-Studio's real source instead**, per the build prompt's own instruction to
@@ -57,6 +75,34 @@ prompt's "final note on flagged judgment calls").
   target, and the only mechanism that actually makes a plain `swift build`/`swift test`
   work unmodified on Linux. Verified end-to-end via a local Docker `swift:5.9`
   container running the exact CI job.
+- **Found and fixed two independent `swift-corelibs-foundation` (Linux) platform bugs
+  neither the plan nor investigation anticipated**, both discovered only once Phase 1's
+  networking code actually ran on Linux, not via code review:
+  1. `URLSession.data(for:)`/`.bytes(for:)` (the async convenience APIs the plan's §3.1
+     code sketch uses directly) are not implemented on Linux at all — confirmed absent
+     on both the `swift:5.9` and `swift:5.10` official Docker images. Fixed with
+     `URLSessionCompat.swift`: `vqData(for:)`/`vqBytes(for:)` extension methods that
+     resolve to the native async APIs unchanged on Apple platforms, and to a
+     delegate-based shim on Linux — `chat()`/`chatStream()`'s call sites are identical
+     on every platform. `bytes(for:)`'s Linux fallback buffers the full response before
+     replaying it as a byte sequence (loses true incremental delivery, but SSE frames
+     still parse identically line-by-line); accepted since `VeloxQuantRuntime`,
+     streaming's most latency-sensitive real consumer, is macOS-only anyway.
+  2. Independently, `URLSession.dataTask(with:completionHandler:)` — the older
+     callback-based API Linux *does* implement — only delivers the **last**
+     `URLProtocol.didLoad` chunk to its completion handler, not the accumulated
+     concatenation of every chunk a custom `URLProtocol` sent (verified directly with a
+     minimal two-chunk repro against the `swift:5.9` image). This silently truncated
+     `chat()`'s response body in the initial version of the Linux shim. Fixed by
+     routing through `URLSessionDataDelegate.urlSession(_:dataTask:didReceive:)`
+     instead, which does accumulate correctly (also verified directly) — this bypasses
+     the completion-handler API's accumulation bug entirely rather than working around
+     it. Also required a `swift-tools-version:5.9`-compatible replacement
+     (`MockHandlerBox`, an `@unchecked Sendable` box) for `nonisolated(unsafe)` in the
+     test target's `MockURLProtocol`, since that attribute requires Swift 5.10+.
+  All 15 `VeloxQuantCoreTests` (11 excluding `VeloxQuantRuntimeTests`, which is
+  macOS-only) pass on both `macos-14` and a local `swift:5.9` Linux container, verified
+  directly rather than assumed from the macOS pass alone.
 
 ### Judgment calls confirmed
 - Repo location: standalone `veloxquant-swift` repo under `rajveer43`, matching the

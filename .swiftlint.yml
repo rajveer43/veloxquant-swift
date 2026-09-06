@@ -1,0 +1,32 @@
+included:
+  - Sources
+  - Tests
+
+opt_in_rules:
+  - explicit_init
+  - force_unwrapping
+
+analyzer_rules:
+  - unused_import
+
+disabled_rules:
+  - todo
+
+line_length:
+  warning: 120
+  error: 160
+
+identifier_name:
+  min_length:
+    warning: 2
+  excluded:
+    - id
+    - to
+
+type_body_length:
+  warning: 400
+  error: 600
+
+file_length:
+  warning: 500
+  error: 800

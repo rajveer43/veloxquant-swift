@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  swift-test-macos:
+    name: Test (macOS)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+      - name: Build
+        run: swift build --build-tests
+      - name: Test
+        run: swift test
+
+  swift-test-linux:
+    name: Test (Linux, VeloxQuantCore only)
+    runs-on: ubuntu-latest
+    container: swift:5.9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build VeloxQuantCore
+        run: swift build --target VeloxQuantCore
+      - name: Test VeloxQuantCoreTests
+        run: swift test --filter VeloxQuantCoreTests
+
+  swiftlint:
+    name: SwiftLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run SwiftLint
+        uses: norio-nomura/action-swiftlint@3.2.1
+        with:
+          args: --strict

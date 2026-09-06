@@ -16,9 +16,11 @@ git URL directly):
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/rajveer43/veloxquant-swift", from: "0.1.0")
+    .package(url: "https://github.com/rajveer43/veloxquant-swift", exact: "0.1.0-alpha")
 ]
 ```
+
+Pre-release tags (`-alpha`, `-beta`, etc.) need `exact:`, not `from:` — SwiftPM's `from:` range matching only considers stable versions. Once a stable `1.0.0`-style tag exists, switch to `from: "1.0.0"`.
 
 Then depend on the product(s) you need:
 

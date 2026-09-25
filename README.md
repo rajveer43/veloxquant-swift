@@ -1,5 +1,11 @@
 # veloxquant-swift
 
+[![Swift](https://img.shields.io/badge/Swift-5.9+-orange?logo=swift)](https://swift.org)
+[![Platforms](https://img.shields.io/badge/Platforms-iOS%2016%2B%20|%20macOS%2013%2B%20|%20watchOS%209%2B%20|%20tvOS%2016%2B%20|%20visionOS%201%2B-blue)](https://github.com/rajveer43/veloxquant-swift)
+[![Release](https://img.shields.io/github/v/release/rajveer43/veloxquant-swift?include_prereleases)](https://github.com/rajveer43/veloxquant-swift/releases)
+[![Tests](https://img.shields.io/github/actions/workflow/status/rajveer43/veloxquant-swift/ci.yml?branch=main&label=Tests)](https://github.com/rajveer43/veloxquant-swift/actions)
+[![License](https://img.shields.io/github/license/rajveer43/veloxquant-swift)](LICENSE)
+
 Swift SDK for [VeloxQuant](https://github.com/rajveer43/veloxquant-mlx) — the
 Apple-Silicon-only MLX KV-cache compression engine. Sibling to the TypeScript, Go, Rust, and
 Kotlin client SDKs.

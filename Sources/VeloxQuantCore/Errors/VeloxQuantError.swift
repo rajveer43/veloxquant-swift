@@ -1,9 +1,9 @@
 import Foundation
 
-/// The full VeloxQuant SDK error hierarchy. All cases are defined together here in Phase 1,
-/// even though the AutoPilot/process-lifecycle cases aren't reachable until Phases 4-5 — this
-/// establishes the hierarchy once, so exhaustive `switch` statements written against it don't
-/// need revisiting later.
+/// The full VeloxQuant SDK error hierarchy. The original 11 cases were defined together in
+/// Phase 1; four more (`cliCommandFailed`, `malformedCLIOutput`, `modelNotFound`,
+/// `noModelFits`) were added with the CLI/AutoPilot layer, because no Phase 1 case described
+/// those failures honestly (see CHANGELOG "Changed"). Exhaustive `switch`es must add them.
 ///
 /// `enum: Error, LocalizedError` mirrors the already-established convention in this exact
 /// codebase (`VeloxQuant-Studio/.../ModelService.swift`'s `ServiceError` is precisely this
@@ -59,6 +59,22 @@ public enum VeloxQuantError: Error, LocalizedError, Sendable {
     /// startup.
     case serveProcessExited(exitCode: Int32, stderr: String)
 
+    /// A one-shot `python -m veloxquant_mlx <subcommand>` shell-out exited non-zero. Added with
+    /// `VeloxQuantRuntime`'s CLI layer — the direct analogue of Kotlin's `CliCommandFailed`.
+    case cliCommandFailed(command: String, exitCode: Int32, stderr: String)
+
+    /// A CLI shell-out exited 0 but its `--json` stdout did not decode into the expected shape
+    /// (e.g. a newer `veloxquant_mlx` changed its output schema).
+    case malformedCLIOutput(command: String, raw: String, underlying: Error)
+
+    /// AutoPilot was asked for a specific model its registry does not know (Go's
+    /// `ErrModelNotFound`).
+    case modelNotFound(name: String)
+
+    /// AutoPilot found no registry model for the task whose footprint fits available memory
+    /// (Go's `ErrInsufficientMemory`).
+    case noModelFits(task: String?, availableMemoryBytes: UInt64)
+
     public var errorDescription: String? {
         switch self {
         case let .runtimeUnreachable(baseURL, underlying):
@@ -83,6 +99,15 @@ public enum VeloxQuantError: Error, LocalizedError, Sendable {
             return "veloxquant serve did not become ready for \(model) on port \(port) within \(timeout)."
         case let .serveProcessExited(exitCode, stderr):
             return "veloxquant serve exited (code \(exitCode)) before becoming ready: \(stderr)"
+        case let .cliCommandFailed(command, exitCode, stderr):
+            return "`\(command)` failed (exit code \(exitCode)): \(stderr)"
+        case let .malformedCLIOutput(command, raw, underlying):
+            return "`\(command)` produced output that could not be decoded (\(underlying.localizedDescription)): \(raw)"
+        case let .modelNotFound(name):
+            return "Model not found in the AutoPilot registry: \(name)"
+        case let .noModelFits(task, availableMemoryBytes):
+            let gib = String(format: "%.1f", Double(availableMemoryBytes) / 1_073_741_824)
+            return "No model fits available memory (\(gib) GiB) for task \"\(task ?? "")\"."
         }
     }
 }

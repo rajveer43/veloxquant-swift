@@ -151,12 +151,32 @@ public struct StreamOptions: Codable, Sendable, Equatable {
     }
 }
 
-/// Response-format hint. `mlx_lm/server.py`'s `do_POST` does not read this field off the
-/// request body at all (investigation §4.2) — sent for wire forward-compatibility only. See
-/// `chatStructured()` (Phase 6) for the prompt-injection-based mechanism this SDK actually uses.
+/// Response-format hint, in OpenAI's `response_format` wire shape (`{"type": "json_object"}` or
+/// `{"type": "json_schema", "json_schema": {...}}`).
+///
+/// **Not enforced by the VeloxQuant runtime today.** `mlx_lm/server.py`'s `do_POST` does not read
+/// this field off the request body at all (investigation §4.2) — it is forwarded on the wire for
+/// forward-compatibility and for OpenAI-compatible backends that do honor it, but the local
+/// runtime will not constrain decoding to match it. This is the same caveat Go's
+/// `ChatRequest.ResponseFormat` documents. Prompt the model explicitly for the shape you want
+/// and validate its output — `VeloxQuantClient.chatStructured(_:format:as:)` does both for you
+/// and returns a `StructuredResult` that forces callers to handle a parse failure.
 public enum ResponseFormat: Codable, Sendable, Equatable {
+    /// `{"type": "json_schema", "json_schema": {...}}`.
     case jsonSchema(JSONSchema)
+    /// `{"type": "json_object"}`.
     case jsonObject
+
+    /// Requests a JSON object response without constraining it to a schema. Swift spelling of
+    /// Go's `JSONMode()` helper.
+    public static var jsonMode: ResponseFormat { .jsonObject }
+
+    /// Requests a response constrained to `schema` (a JSON Schema object). Swift spelling of Go's
+    /// `JSONSchema(name, schema, strict)` helper; `strict` requests exact adherence from
+    /// backends that support it (the VeloxQuant runtime does not — see the type's doc comment).
+    public static func jsonSchema(name: String, schema: [String: JSONValue], strict: Bool = false) -> ResponseFormat {
+        .jsonSchema(JSONSchema(name: name, schema: schema, strict: strict))
+    }
 
     private enum CodingKeys: String, CodingKey {
         case type, jsonSchema = "json_schema"
@@ -183,15 +203,18 @@ public enum ResponseFormat: Codable, Sendable, Equatable {
         }
     }
 
-    /// A named JSON Schema constraint passed to `chatStructured()` (Phase 6). `schema` uses
-    /// `[String: JSONValue]` for the same reason `FunctionDefinition.parameters` does — see
-    /// that type's doc comment for the flagged nested-schema gap this leaves unresolved.
+    /// A named JSON Schema constraint. `schema` is the top-level schema object; nested
+    /// `properties`/`items` are representable via `JSONValue.object`/`.array`.
     public struct JSONSchema: Codable, Sendable, Equatable {
+        /// Identifies the schema.
         public let name: String
+        /// The JSON Schema document (a JSON object).
         public let schema: [String: JSONValue]
+        /// Requests exact schema adherence, for backends that support it.
         public let strict: Bool
 
-        public init(name: String, schema: [String: JSONValue], strict: Bool) {
+        /// Creates a named schema constraint.
+        public init(name: String, schema: [String: JSONValue], strict: Bool = false) {
             self.name = name
             self.schema = schema
             self.strict = strict

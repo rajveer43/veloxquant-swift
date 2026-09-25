@@ -85,3 +85,39 @@ func mockResponse(for request: URLRequest, statusCode: Int) throws -> HTTPURLRes
     }
     return response
 }
+
+/// The body of a request seen by `MockURLProtocol`. `URLSession` moves `httpBody` into
+/// `httpBodyStream` before a `URLProtocol` sees it, so this reads whichever is present.
+func requestBody(_ request: URLRequest) -> Data {
+    if let body = request.httpBody {
+        return body
+    }
+    guard let stream = request.httpBodyStream else { return Data() }
+    stream.open()
+    defer { stream.close() }
+    var data = Data()
+    var buffer = [UInt8](repeating: 0, count: 4096)
+    while stream.hasBytesAvailable {
+        let read = stream.read(&buffer, maxLength: buffer.count)
+        if read <= 0 { break }
+        data.append(buffer, count: read)
+    }
+    return data
+}
+
+/// The `messages` array of a chat request body, as `[[String: Any]]`.
+func requestMessages(_ request: URLRequest) -> [[String: Any]] {
+    let object = try? JSONSerialization.jsonObject(with: requestBody(request)) as? [String: Any]
+    return object?["messages"] as? [[String: Any]] ?? []
+}
+
+/// A minimal non-streaming `chat.completion` body replying with `content`.
+func chatCompletionJSON(content: String, completionTokens: Int = 2) -> Data {
+    let body: [String: Any] = [
+        "id": "chatcmpl-test",
+        "model": "test-model",
+        "choices": [["index": 0, "message": ["role": "assistant", "content": content], "finish_reason": "stop"]],
+        "usage": ["prompt_tokens": 3, "completion_tokens": completionTokens, "total_tokens": 3 + completionTokens]
+    ]
+    return (try? JSONSerialization.data(withJSONObject: body)) ?? Data()
+}

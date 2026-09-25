@@ -23,6 +23,8 @@ public final class VeloxQuantClient: Sendable {
 
     let session: URLSession
     let requestTimeout: TimeInterval
+    /// Where `chat()`/`chatStream()` push live inference metrics — see `monitor(interval:sampler:)`.
+    let metricsSink = MetricsSinkBox()
 
     public init(
         baseURL: URL = URL(string: "http://127.0.0.1:8000")!,

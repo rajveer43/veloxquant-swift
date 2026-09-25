@@ -110,17 +110,9 @@ public struct ToolDefinition: Codable, Sendable, Equatable {
 /// The name/description/JSON-schema-parameters of a callable tool, per OpenAI's `function`
 /// shape.
 ///
-/// `parameters` uses `[String: JSONValue]` rather than a dedicated JSON-Schema type: `JSONValue`
-/// (ported verbatim from Studio, per `JSONValue.swift`'s doc comment) only has scalar cases
-/// (string/int/double/bool/null), matching every use of it that already exists in this exact
-/// codebase (`ConfigField.defaultValue`, `RecommendedConfig.knobs`) — none of which need
-/// arbitrary nesting. An actual JSON Schema object (with nested objects/arrays for
-/// `properties`/`items`) does not fit this shape. This is a known, flagged gap: Phase 6's
-/// `ResponseFormat.JSONSchema.schema` field has the identical problem and needs its own
-/// resolution then (a recursive `JSONValue` with `.array`/`.object` cases, most likely) —
-/// noted here rather than silently worked around, since `tools`/`function calling` is a
-/// v1 wire field this phase must still cover even though full JSON-Schema-shaped parameters
-/// are not yet representable.
+/// `parameters` is a JSON Schema object as `[String: JSONValue]`. Phase 1 flagged that the
+/// then scalar-only `JSONValue` could not express nested `properties`/`items`; that gap is now
+/// closed by `JSONValue`'s `.array`/`.object` cases (see `JSONValue`'s doc comment).
 public struct FunctionDefinition: Codable, Sendable, Equatable {
     public var name: String
     public var description: String?

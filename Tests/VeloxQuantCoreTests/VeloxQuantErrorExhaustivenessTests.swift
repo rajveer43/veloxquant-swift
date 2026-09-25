@@ -26,6 +26,10 @@ final class VeloxQuantErrorExhaustivenessTests: XCTestCase {
         case .malformedStructuredOutput: break
         case .serveStartupTimeout: break
         case .serveProcessExited: break
+        case .cliCommandFailed: break
+        case .malformedCLIOutput: break
+        case .modelNotFound: break
+        case .noModelFits: break
         }
     }
 
@@ -41,7 +45,11 @@ final class VeloxQuantErrorExhaustivenessTests: XCTestCase {
             .unsupportedPlatform(feature: "x", platform: "x"),
             .malformedStructuredOutput(raw: "x", underlying: URLError(.unknown)),
             .serveStartupTimeout(model: "x", port: 8000, timeout: .seconds(1)),
-            .serveProcessExited(exitCode: 1, stderr: "x")
+            .serveProcessExited(exitCode: 1, stderr: "x"),
+            .cliCommandFailed(command: "x", exitCode: 2, stderr: "x"),
+            .malformedCLIOutput(command: "x", raw: "x", underlying: URLError(.unknown)),
+            .modelNotFound(name: "x"),
+            .noModelFits(task: "coding", availableMemoryBytes: 1)
         ]
 
         for error in errors {

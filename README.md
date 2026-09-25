@@ -45,15 +45,35 @@ explicit `#error` rather than a confusing missing-symbol error.
 
 | Target | Platforms | Purpose | Status |
 |---|---|---|---|
-| `VeloxQuantCore` | iOS 16+, macOS 13+, watchOS 9+, tvOS 16+, visionOS 1+ | Chat/streaming HTTP client, full error model, memory estimation, conversations, structured output, embeddings, monitoring | `chat()`/`chatStream()`, the full `VeloxQuantError` hierarchy, and 404-dispatch logic shipped (Phase 1). Memory estimation, conversations, structured output/embeddings, monitoring pending. |
-| `VeloxQuantRuntime` | macOS 13+ only | Python interpreter resolution, CLI shell-outs, AutoPilot, `serve` process lifecycle, method/model listing | `HardwareDetector.detect()` shipped (Phase 0). Interpreter resolution, CLI shell-outs, AutoPilot, process lifecycle pending. |
+| `VeloxQuantCore` | iOS 16+, macOS 13+, watchOS 9+, tvOS 16+, visionOS 1+ | Chat/streaming HTTP client, full error model, memory estimation, conversations, structured output, embeddings, monitoring | Shipped: `chat()`/`chatStream()` + the `VeloxQuantError` hierarchy (Phase 1); `MemoryEstimator` (Go/Rust KV-cache formula, `accountingOnly` fields), `OfflineOptimizer`, curated `ModelRegistry`; `Conversation` (actor, failed turns leave history unchanged); `ResponseFormat.jsonMode`/`.jsonSchema(...)` + `chatStructured()` → `StructuredResult`; `embed()`; `Monitor` + live per-request metrics. |
+| `VeloxQuantRuntime` | macOS 13+ only | Python interpreter resolution, CLI shell-outs, AutoPilot, `serve` process lifecycle, method/model listing | Shipped: `HardwareDetector.detect()` (Phase 0); `PythonEnvironment` (`VELOXQUANT_PYTHON` + Studio auto-detect); `VeloxQuantCLI` (`recommend`/`auto-config`/`methods`/`profile`/`precompute`/`benchmark`); `VeloxQuantProcess.listMethods()`/`listLocalModels()`; `AutoPilot` (`tryStart`/`start`, `plan` decision trail); `VeloxQuantProcess` (`serve` launch, readiness race, SIGINT→SIGTERM→SIGKILL stop, best-effort orphan cleanup); host/process memory samplers. Pending: `benchmarkServing()`. |
+
+Every feature above is unit-tested against mocked boundaries (`URLProtocol` for HTTP, fake
+process runners/handles for subprocesses). End-to-end behavior against a real `veloxquant serve`
+on Apple Silicon has **not** yet been verified by hand for the Phase 2+ features — see
+`CHANGELOG.md`.
+
+### Runtime caveats worth knowing up front
+
+- **Compression byte counts are accounting-only.** VeloxQuant's caches store dequantized fp16
+  tensors, so `MemoryEstimate`'s `optimized*`/`saved*` figures describe compression accounting,
+  not resident-memory reduction. Every estimate carries `accountingOnly`/`accountingNote`.
+- **`response_format` is not enforced by the runtime.** `mlx_lm.server` ignores it;
+  `chatStructured()` is a prompt-injection fallback that returns `.parsed` or `.parseFailed`.
+- **`embed()` has no route on the VeloxQuant runtime today** (`mlx_lm.server` does not serve
+  `/v1/embeddings`); it works against OpenAI-compatible backends that do.
+- **Orphaned `serve` processes are prevented best-effort only** (`atexit` + `deinit`). A macOS
+  app should also call `stop()` from `NSApplication.willTerminateNotification`.
 
 ## Requirements
 
 - Swift 5.9 toolchain (Xcode 15+) to build.
 - A discoverable Python environment with `veloxquant_mlx` installed for any feature that shells
-  out to it (AutoPilot, `serve` process management) — macOS-only (`VeloxQuantRuntime`), never
-  required for `VeloxQuantCore` consumers.
+  out to it (CLI calls, AutoPilot, `serve` process management) — macOS-only
+  (`VeloxQuantRuntime`), never required for `VeloxQuantCore` consumers. `PythonEnvironment.
+  autoDetect()` honors `VELOXQUANT_PYTHON` (the same override the Go/TS SDKs read), then tries
+  `$VIRTUAL_ENV`, `$CONDA_PREFIX`, Homebrew/system paths, and your login shell's `python3`.
+  `listLocalModels()` needs no Python at all (it scans the Hugging Face cache directly).
 
 ## Building
 
